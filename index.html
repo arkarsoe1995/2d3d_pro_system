@@ -11,6 +11,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
     <link href="https://fonts.googleapis.com/css2?family=Padauk:wght@400;700&family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
 
     <style>
@@ -225,6 +228,25 @@
     <div id="root"></div>
 
     <script type="text/babel">
+        // ==========================================
+        // FIREBASE CONFIGURATION
+        // ==========================================
+        const firebaseConfig = {
+            // TODO: သင့် Firebase Config ကိုဒီနေရာမှာအစားထိုးပါ
+            // apiKey: "AIzaSy...",
+            // authDomain: "your-app.firebaseapp.com",
+            // projectId: "your-app",
+            // storageBucket: "your-app.appspot.com",
+            // messagingSenderId: "...",
+            // appId: "..."
+        };
+
+        // Initialize Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.firestore();
+
         const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
         // ==========================================
@@ -265,11 +287,44 @@
         };
 
         // ==========================================
-        // AUTH PAGE
+        // AUTH PAGE (With Firebase)
         // ==========================================
         const AuthPage = ({ onLogin }) => {
             const [phone, setPhone] = useState("");
             const [name, setName] = useState("");
+            const [loading, setLoading] = useState(false);
+
+            const handleLogin = async () => {
+                if (!name || !phone) return;
+                setLoading(true);
+
+                try {
+                    // Check if user exists
+                    const usersRef = db.collection('users');
+                    const snapshot = await usersRef.where('phone', '==', phone).get();
+
+                    if (!snapshot.empty) {
+                        // User exists, login
+                        const userData = snapshot.docs[0].data();
+                        onLogin({ id: snapshot.docs[0].id, ...userData });
+                    } else {
+                        // Create new user
+                        const newUser = {
+                            name,
+                            phone,
+                            coins: 5000, // Free welcome bonus
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        };
+                        const docRef = await usersRef.add(newUser);
+                        onLogin({ id: docRef.id, ...newUser });
+                    }
+                } catch (error) {
+                    console.error("Login Error:", error);
+                    alert("အကောင့်ဝင်မရပါ၊ အင်တာနက်စစ်ဆေးပါ");
+                } finally {
+                    setLoading(false);
+                }
+            };
 
             return (
                 <div className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden bg-slate-900">
@@ -293,7 +348,9 @@
                                 <label className="text-xs text-slate-400 uppercase font-bold ml-1 mb-1 block">ဖုန်းနံပါတ်</label>
                                 <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} className="w-full bg-slate-800/50 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-cyan-500 transition-colors" placeholder="09xxxxxxxxx" />
                             </div>
-                            <Button onClick={() => name && phone ? onLogin({name, phone, coins: 5000}) : null} className="w-full mt-4 !bg-gradient-to-r !from-cyan-600 !to-blue-600">စတင်အသုံးပြုမယ်</Button>
+                            <Button onClick={handleLogin} disabled={loading} className="w-full mt-4 !bg-gradient-to-r !from-cyan-600 !to-blue-600">
+                                {loading ? <Icon name="loader-2" className="animate-spin" /> : "စတင်အသုံးပြုမယ်"}
+                            </Button>
                         </div>
                     </div>
                 </div>
@@ -710,19 +767,46 @@
         };
 
         // ==========================================
-        // HOME PAGE
+        // HOME PAGE (With Firebase Betting)
         // ==========================================
         const HomePage = ({ user, setUser }) => {
             const [amount, setAmount] = useState("");
             const [num, setNum] = useState("");
-            const handleBet = () => {
+            const [betting, setBetting] = useState(false);
+
+            const handleBet = async () => {
                 if(!amount || !num) return;
-                if(parseInt(amount) > user.coins) return alert("လက်ကျန်ငွေမလုံလောက်ပါ");
-                const newCoins = user.coins - parseInt(amount);
-                setUser({...user, coins: newCoins});
-                setAmount("");
-                setNum("");
-                alert(`နံပါတ် ${num} ကို ${amount} ကျပ်ဖိုး ထိုးပြီးပါပြီ။`);
+                const betAmount = parseInt(amount);
+                
+                if (betAmount > user.coins) return alert("လက်ကျန်ငွေမလုံလောက်ပါ");
+                if (betAmount < 100) return alert("အနည်းဆုံး 100 ကျပ်ထိုးရပါမည်");
+
+                setBetting(true);
+                try {
+                    // Update User Balance in Firestore
+                    const userRef = db.collection('users').doc(user.id);
+                    await userRef.update({
+                        coins: firebase.firestore.FieldValue.increment(-betAmount)
+                    });
+
+                    // (Optional) Save Bet History
+                    await db.collection('bets').add({
+                        userId: user.id,
+                        userName: user.name,
+                        number: num,
+                        amount: betAmount,
+                        date: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    setAmount("");
+                    setNum("");
+                    alert(`နံပါတ် ${num} ကို ${amount} ကျပ်ဖိုး ထိုးပြီးပါပြီ။`);
+                } catch (error) {
+                    console.error("Bet error:", error);
+                    alert("ကွန်နက်ရှင်ပြဿနာရှိပါသည်");
+                } finally {
+                    setBetting(false);
+                }
             };
 
             return (
@@ -744,7 +828,9 @@
                             <div className="flex-1"><label className="text-xs text-slate-400 mb-1 block">နံပါတ်</label><input type="text" maxLength="3" placeholder="99" value={num} onChange={e => setNum(e.target.value)} className="w-full bg-slate-900/50 border border-slate-700 text-center text-2xl font-bold p-3 rounded-xl focus:border-blue-500 focus:outline-none text-white tracking-widest" /></div>
                             <div className="flex-1"><label className="text-xs text-slate-400 mb-1 block">ပမာဏ</label><input type="number" placeholder="1000" value={amount} onChange={e => setAmount(e.target.value)} className="w-full bg-slate-900/50 border border-slate-700 text-center text-xl font-bold p-3 rounded-xl focus:border-blue-500 focus:outline-none text-white" /></div>
                         </div>
-                        <Button onClick={handleBet} className="w-full py-4 text-lg animate-pulse-glow">ထိုးမည်</Button>
+                        <Button onClick={handleBet} disabled={betting} className="w-full py-4 text-lg animate-pulse-glow">
+                             {betting ? <Icon name="loader-2" className="animate-spin" /> : "ထိုးမည်"}
+                        </Button>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div className="glass-panel p-4 rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-slate-800/50 transition-colors cursor-pointer"><div className="bg-green-500/20 p-3 rounded-full text-green-400"><Icon name="phone" size={24} /></div><span className="text-sm font-bold">Viber</span></div>
@@ -755,21 +841,26 @@
         };
 
         // ==========================================
-        // RANK PAGE (NEW)
+        // RANK PAGE (With Firebase Real-time Data)
         // ==========================================
         const RankPage = ({ user }) => {
-            const topUsers = [
-                { name: "Ko Thet", coins: 1500000, id: 1 },
-                { name: "Mg Mg", coins: 1200000, id: 2 },
-                { name: "U Ba", coins: 950000, id: 3 },
-                { name: "Aung Aung", coins: 800000, id: 4 },
-                { name: "Ko Soe", coins: 750000, id: 5 },
-                { name: "Ma Hla", coins: 600000, id: 6 },
-                { name: "Tun Tun", coins: 550000, id: 7 },
-                { name: "Kyaw Gyi", coins: 400000, id: 8 },
-                { name: "Bo Bo", coins: 350000, id: 9 },
-                { name: "Thura", coins: 300000, id: 10 },
-            ];
+            const [topUsers, setTopUsers] = useState([]);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                const unsubscribe = db.collection('users')
+                    .orderBy('coins', 'desc')
+                    .limit(10)
+                    .onSnapshot(snapshot => {
+                        const users = snapshot.docs.map(doc => ({
+                            id: doc.id,
+                            ...doc.data()
+                        }));
+                        setTopUsers(users);
+                        setLoading(false);
+                    });
+                return () => unsubscribe();
+            }, []);
 
             const getRankIcon = (index) => {
                 if (index === 0) return <Icon name="crown" size={24} className="text-yellow-400 fill-yellow-400/20" />; 
@@ -802,22 +893,26 @@
                     </div>
 
                     <div className="space-y-3">
-                        {topUsers.map((player, index) => (
-                            <div key={player.id} className="glass-panel p-4 rounded-2xl flex items-center justify-between hover:bg-slate-800/50 transition-colors border border-white/5">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-8 flex justify-center">
-                                        {getRankIcon(index)}
+                        {loading ? (
+                            <div className="text-center p-4 text-slate-500"><Icon name="loader-2" className="animate-spin" /> Loading Ranks...</div>
+                        ) : (
+                            topUsers.map((player, index) => (
+                                <div key={player.id} className={`glass-panel p-4 rounded-2xl flex items-center justify-between transition-colors border ${player.id === user.id ? 'border-yellow-500/50 bg-yellow-500/10' : 'border-white/5 hover:bg-slate-800/50'}`}>
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-8 flex justify-center">
+                                            {getRankIcon(index)}
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className={`font-bold ${index < 3 ? 'text-white text-lg' : 'text-slate-300'}`}>{player.name}</span>
+                                            {index < 3 && <span className="text-[10px] text-yellow-500 font-bold uppercase tracking-wider">Top Rank</span>}
+                                        </div>
                                     </div>
-                                    <div className="flex flex-col">
-                                        <span className={`font-bold ${index < 3 ? 'text-white text-lg' : 'text-slate-300'}`}>{player.name}</span>
-                                        {index < 3 && <span className="text-[10px] text-yellow-500 font-bold uppercase tracking-wider">Top Rank</span>}
+                                    <div className="font-black text-slate-200">
+                                        {player.coins.toLocaleString()} <span className="text-[10px] text-slate-500">Ks</span>
                                     </div>
                                 </div>
-                                <div className="font-black text-slate-200">
-                                    {player.coins.toLocaleString()} <span className="text-[10px] text-slate-500">Ks</span>
-                                </div>
-                            </div>
-                        ))}
+                            ))
+                        )}
                     </div>
                 </div>
             );
@@ -832,6 +927,19 @@
             const [loading, setLoading] = useState(true);
 
             useEffect(() => { setTimeout(() => setLoading(false), 2000); }, []);
+
+            // Listen to User Balance Changes in Realtime
+            useEffect(() => {
+                if (user?.id) {
+                    const unsubscribe = db.collection('users').doc(user.id)
+                        .onSnapshot(doc => {
+                            if (doc.exists) {
+                                setUser(prev => ({ ...prev, ...doc.data() }));
+                            }
+                        });
+                    return () => unsubscribe();
+                }
+            }, [user?.id]);
 
             if (loading) return (
                 <div className="h-screen w-full flex flex-col items-center justify-center bg-slate-950 text-white">
