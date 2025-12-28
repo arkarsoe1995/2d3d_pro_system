@@ -3,267 +3,493 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>2D3D Myanmar Master</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <title>2D3D Myanmar Pro System</title>
+    
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
     <script src="https://unpkg.com/lucide@latest"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Padauk:wght@400;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Padauk:wght@400;700&display=swap');
-        body { font-family: 'Padauk', sans-serif; overflow: hidden; background: #0f172a; color: white; }
-        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
-        .nav-active { color: #3b82f6; transform: translateY(-5px); transition: all 0.3s; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        /* 3D Table Custom Styles */
-        .cell-box { min-width: 45px; height: 35px; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-size: 12px; cursor: pointer; position: relative; }
-        .line-svg { position: absolute; pointer-events: none; top: 0; left: 0; z-index: 10; }
+        body { 
+            font-family: 'Padauk', 'Inter', sans-serif; 
+            background-color: #0f172a; 
+            color: #fff;
+            overflow-x: hidden; 
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 4px; }
+
+        /* Animations */
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.8); }
+        }
+        .animate-pulse-glow { animation: pulse-glow 2s infinite; }
+        
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .number-gradient {
+            background: linear-gradient(to right, #4facfe 0%, #00f2fe 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .tab-active {
+            color: #3b82f6;
+            transform: translateY(-2px);
+        }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo, useRef } = React;
+        const { useState, useEffect, useRef, useMemo } = React;
 
-        // --- UI Components ---
-        const Icon = ({ name, size = 20, className = "" }) => {
-            useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [name]);
-            return <i data-lucide={name} style={{ width: size, height: size }} className={className}></i>;
+        // ==========================================
+        // UTILS & MOCK DATA
+        // ==========================================
+        
+        // 3D Grid Generation Logic (Adapted from cal3d.html)
+        const generate3DGrid = (year) => {
+            const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            const data = [];
+            // Simulating the formula results from the uploaded file
+            months.forEach((m, index) => {
+                data.push({
+                    month: m,
+                    dates: [
+                        { day: "1", val: Math.floor(Math.random() * 999).toString().padStart(3, '0'), isWin: Math.random() > 0.8 },
+                        { day: "16", val: Math.floor(Math.random() * 999).toString().padStart(3, '0'), isWin: Math.random() > 0.8 }
+                    ]
+                });
+            });
+            return data;
         };
 
-        const App = () => {
-            const [view, setView] = useState('welcome'); // welcome, auth, home, live, cal, rank, profile
-            const [user, setUser] = useState(null);
-            const [coins, setCoins] = useState(1000);
-            const [isDarkMode, setIsDarkMode] = useState(true);
+        // ==========================================
+        // UI COMPONENTS
+        // ==========================================
+        
+        const Icon = ({ name, size = 20, className }) => {
+            useEffect(() => { lucide.createIcons(); }, [name]);
+            return <i data-lucide={name} style={{ width: size, height: size }} className={`inline-block ${className}`}></i>;
+        };
 
-            // --- 1. Welcome Screen ---
-            if (view === 'welcome') {
-                return (
-                    <div className="h-screen flex flex-col items-center justify-center p-6 text-center bg-gradient-to-b from-slate-900 to-blue-900">
-                        <div className="w-24 h-24 bg-blue-600 rounded-3xl flex items-center justify-center mb-6 shadow-2xl animate-bounce">
-                            <Icon name="trending-up" size={48} />
-                        </div>
-                        <h1 className="text-3xl font-bold mb-2">2D3D MYANMAR</h1>
-                        <p className="text-slate-400 mb-8">မြန်မာ့အကောင်းဆုံး 2D3D တွက်စက်နှင့် Live App</p>
-                        <button onClick={() => setView('auth')} className="w-full max-w-xs py-4 bg-blue-600 rounded-2xl font-bold text-lg">စတင်အသုံးပြုမည်</button>
-                    </div>
-                );
-            }
+        const Button = ({ children, onClick, variant = "primary", className = "", disabled=false }) => {
+            const base = "px-4 py-3 rounded-xl font-bold transition-all active:scale-95 flex items-center justify-center gap-2";
+            const styles = {
+                primary: "bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-500/30",
+                secondary: "bg-slate-700 text-white hover:bg-slate-600",
+                danger: "bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500 hover:text-white",
+                ghost: "bg-transparent text-slate-400 hover:text-white"
+            };
+            return (
+                <button disabled={disabled} onClick={onClick} className={`${base} ${styles[variant]} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}>
+                    {children}
+                </button>
+            );
+        };
 
-            // --- 2. Auth System (Login/Register) ---
-            if (view === 'auth') {
-                return (
-                    <div className="h-screen p-6 flex flex-col justify-center">
-                        <div className="glass p-8 rounded-3xl">
-                            <h2 className="text-2xl font-bold mb-6 text-center">အကောင့်ဝင်ပါ</h2>
-                            <input type="text" placeholder="အမည်" className="w-full bg-slate-800 p-4 rounded-xl mb-4 border border-slate-700 outline-none" />
-                            <input type="password" placeholder="စကားဝှက်" className="w-full bg-slate-800 p-4 rounded-xl mb-6 border border-slate-700 outline-none" />
-                            <button onClick={() => { setUser({name: 'User'}); setView('home'); }} className="w-full py-4 bg-blue-600 rounded-xl font-bold mb-4">Login</button>
-                            <p className="text-center text-slate-400 text-sm">အကောင့်မရှိသေးပါက <span className="text-blue-500">Register</span> လုပ်ပါ</p>
-                        </div>
-                    </div>
-                );
-            }
+        // ==========================================
+        // PAGES
+        // ==========================================
+
+        // --- AUTH PAGE ---
+        const AuthPage = ({ onLogin }) => {
+            const [phone, setPhone] = useState("");
+            const [name, setName] = useState("");
 
             return (
-                <div className="h-screen flex flex-col">
-                    {/* Header */}
-                    <header className="px-5 py-4 flex justify-between items-center glass border-b-0 rounded-b-3xl">
-                        <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center"><Icon name="cpu" size={16}/></div>
-                            <span className="font-bold tracking-tighter uppercase text-sm">ArkarSoe.sys</span>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-1 bg-yellow-500/20 text-yellow-500 px-3 py-1 rounded-full text-xs font-bold">
-                                <Icon name="coins" size={14}/> {coins}
+                <div className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden">
+                    {/* Background decoration */}
+                    <div className="absolute top-0 left-0 w-64 h-64 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 -translate-x-1/2 -translate-y-1/2 animate-blob"></div>
+                    <div className="absolute bottom-0 right-0 w-64 h-64 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 translate-x-1/2 translate-y-1/2 animate-blob animation-delay-2000"></div>
+
+                    <div className="glass-panel p-8 rounded-3xl w-full max-w-sm border border-white/10 relative z-10">
+                        <div className="text-center mb-8">
+                            <div className="w-20 h-20 bg-gradient-to-tr from-blue-500 to-cyan-400 rounded-2xl mx-auto flex items-center justify-center shadow-lg mb-4">
+                                <span className="text-3xl font-black text-white">2D</span>
                             </div>
-                            <Icon name="bell" size={20} className="text-slate-400" />
+                            <h1 className="text-2xl font-bold text-white mb-1">အကောင့်ဝင်ရန်</h1>
+                            <p className="text-slate-400 text-sm">Pro System သို့ ကြိုဆိုပါသည်</p>
                         </div>
-                    </header>
 
-                    {/* Main Content Area */}
-                    <main className="flex-1 overflow-y-auto no-scrollbar p-4">
-                        {view === 'home' && <HomeView />}
-                        {view === 'live' && <LiveView />}
-                        {view === 'cal' && <CalView />}
-                        {view === 'rank' && <RankView />}
-                        {view === 'profile' && <ProfileView user={user} />}
-                    </main>
-
-                    {/* Bottom Navigation */}
-                    <nav className="glass px-6 py-4 flex justify-between items-center rounded-t-[2.5rem]">
-                        <NavItem active={view==='home'} icon="home" label="Home" onClick={()=>setView('home')} />
-                        <NavItem active={view==='live'} icon="play-circle" label="Live" onClick={()=>setView('live')} />
-                        <NavItem active={view==='cal'} icon="calculator" label="3D Cal" onClick={()=>setView('cal')} />
-                        <NavItem active={view==='rank'} icon="trophy" label="Rank" onClick={()=>setView('rank')} />
-                        <NavItem active={view==='profile'} icon="user" label="Profile" onClick={()=>setView('profile')} />
-                    </nav>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-xs text-slate-400 uppercase font-bold ml-1 mb-1 block">အမည်</label>
+                                <input 
+                                    value={name} onChange={e => setName(e.target.value)}
+                                    className="w-full bg-slate-800/50 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                                    placeholder="Mg Mg"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs text-slate-400 uppercase font-bold ml-1 mb-1 block">ဖုန်းနံပါတ်</label>
+                                <input 
+                                    type="tel" value={phone} onChange={e => setPhone(e.target.value)}
+                                    className="w-full bg-slate-800/50 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                                    placeholder="09xxxxxxxxx"
+                                />
+                            </div>
+                            <Button onClick={() => name && phone ? onLogin({name, phone, coins: 5000}) : null} className="w-full mt-4">
+                                စတင်အသုံးပြုမယ် <Icon name="arrow-right" size={18} />
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             );
         };
 
-        const NavItem = ({ active, icon, label, onClick }) => (
-            <button onClick={onClick} className={`flex flex-col items-center gap-1 ${active ? 'nav-active' : 'text-slate-500'}`}>
-                <Icon name={icon} size={24} />
-                <span className="text-[10px] font-bold uppercase">{label}</span>
-            </button>
-        );
+        // --- LIVE 2D PAGE (Logic from live2d.html) ---
+        const LivePage = () => {
+            const [data, setData] = useState({ live: { set: "0.00", value: "0.00", twod: "--" }, result: [] });
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(false);
 
-        // --- View: Home ---
-        const HomeView = () => (
-            <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="glass p-5 rounded-3xl bg-gradient-to-br from-blue-600/20 to-transparent">
-                        <p className="text-xs text-slate-400 mb-1">2D နောက်ဆုံးထွက်</p>
-                        <h2 className="text-4xl font-black text-blue-500">51</h2>
-                        <p className="text-[10px] opacity-50">16:30 PM</p>
-                    </div>
-                    <div className="glass p-5 rounded-3xl bg-gradient-to-br from-purple-600/20 to-transparent">
-                        <p className="text-xs text-slate-400 mb-1">3D နောက်ဆုံးထွက်</p>
-                        <h2 className="text-4xl font-black text-purple-500">920</h2>
-                        <p className="text-[10px] opacity-50">16 Dec 2025</p>
-                    </div>
-                </div>
-                
-                <div className="glass p-5 rounded-3xl">
-                    <h3 className="font-bold mb-4 flex items-center gap-2"><Icon name="history" size={18}/> ထိုးထားသောဂဏန်းများ</h3>
-                    <div className="text-center py-4 text-slate-500 text-sm">မှတ်တမ်းမရှိသေးပါ။</div>
-                </div>
-
-                <div className="glass p-5 rounded-3xl border-dashed border-blue-500/50">
-                    <h3 className="font-bold mb-4">ဂဏန်းထိုးမည် (Coin စနစ်)</h3>
-                    <div className="flex gap-2 mb-4">
-                        <input placeholder="ဂဏန်း" className="flex-1 bg-slate-800 p-3 rounded-xl outline-none border border-slate-700" />
-                        <input placeholder="ပမာဏ" className="w-24 bg-slate-800 p-3 rounded-xl outline-none border border-slate-700" />
-                    </div>
-                    <button className="w-full py-3 bg-blue-600 rounded-xl font-bold">ထိုးမည်</button>
-                </div>
-            </div>
-        );
-
-        // --- View: 2D Live ---
-        const LiveView = () => {
-            const [liveData, setLiveData] = useState(null);
             useEffect(() => {
-                fetch('https://api.thaistock2d.com/live').then(res => res.json()).then(data => setLiveData(data));
+                const fetchData = async () => {
+                    try {
+                        // Using the API from the uploaded file
+                        const res = await fetch('https://api.thaistock2d.com/live');
+                        const json = await res.json();
+                        setData(json);
+                        setError(false);
+                    } catch (e) {
+                        setError(true);
+                        console.error(e);
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+
+                fetchData();
+                const interval = setInterval(fetchData, 2000); // 2 seconds refresh for "Live" feel
+                return () => clearInterval(interval);
             }, []);
 
             return (
-                <div className="space-y-4">
-                    <div className="glass p-8 rounded-[3rem] text-center relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>
-                        <p className="text-sm font-bold text-blue-400 uppercase tracking-widest mb-4">Live Result</p>
-                        <h1 className="text-8xl font-black mb-6">{liveData?.live?.twod || '--'}</h1>
-                        <div className="flex justify-between text-xs font-bold text-slate-400 px-4">
-                            <span>SET: {liveData?.live?.set || '--'}</span>
-                            <span>VAL: {liveData?.live?.value || '--'}</span>
+                <div className="pb-24 pt-4 px-4 space-y-6 animate-fade-in">
+                    {/* Live Status Header */}
+                    <div className="flex justify-between items-end">
+                        <div>
+                            <h2 className="text-2xl font-bold text-white">Live 2D</h2>
+                            <p className="text-slate-400 text-xs">{new Date().toDateString()}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="relative flex h-3 w-3">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                            </span>
+                            <span className="text-xs text-green-400 font-bold tracking-wider">ONLINE</span>
                         </div>
                     </div>
 
-                    <div className="glass rounded-3xl overflow-hidden">
-                        <table className="w-full text-left">
-                            <thead className="bg-white/5 text-[10px] uppercase text-slate-500">
-                                <tr>
-                                    <th className="p-4">Time</th>
-                                    <th className="p-4">SET</th>
-                                    <th className="p-4">2D</th>
-                                </tr>
-                            </thead>
-                            <tbody className="text-sm">
-                                {liveData?.result?.map((r, i) => (
-                                    <tr key={i} className="border-t border-white/5">
-                                        <td className="p-4 font-bold">{r.open_time}</td>
-                                        <td className="p-4 opacity-60">{r.set}</td>
-                                        <td className="p-4 text-xl font-black text-blue-500">{r.twod}</td>
+                    {/* Main Live Card - Design from live2d.html but modernized */}
+                    <div className="glass-panel rounded-3xl p-1 relative overflow-hidden group">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-500 animate-loading"></div>
+                        <div className="bg-slate-900/90 rounded-[22px] p-6 text-center relative z-10">
+                            <p className="text-slate-400 text-sm font-medium mb-4">SET Index</p>
+                            
+                            <div className="flex justify-center items-end gap-1 mb-2">
+                                <h1 className="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-400 tracking-tighter">
+                                    {data.live.twod}
+                                </h1>
+                            </div>
+                            
+                            <div className="flex justify-center gap-4 mt-6">
+                                <div className="bg-slate-800 rounded-xl p-3 w-full">
+                                    <p className="text-[10px] text-slate-500 uppercase font-bold">Set</p>
+                                    <p className="text-xl font-bold text-cyan-400">{data.live.set}</p>
+                                </div>
+                                <div className="bg-slate-800 rounded-xl p-3 w-full">
+                                    <p className="text-[10px] text-slate-500 uppercase font-bold">Value</p>
+                                    <p className="text-xl font-bold text-cyan-400">{data.live.value}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* History Table */}
+                    <div className="glass-panel rounded-2xl overflow-hidden">
+                        <div className="p-4 border-b border-slate-700/50 bg-slate-800/50">
+                            <h3 className="font-bold text-slate-200 flex items-center gap-2">
+                                <Icon name="clock" size={16} /> ယနေ့မှတ်တမ်း
+                            </h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left text-slate-400">
+                                <thead className="text-xs text-slate-500 uppercase bg-slate-900/50">
+                                    <tr>
+                                        <th className="px-4 py-3">Time</th>
+                                        <th className="px-4 py-3">Set</th>
+                                        <th className="px-4 py-3">Value</th>
+                                        <th className="px-4 py-3 text-right">Result</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {data.result && data.result.map((row, idx) => (
+                                        <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors">
+                                            <td className="px-4 py-3 font-medium">{row.open_time}</td>
+                                            <td className="px-4 py-3">{row.set}</td>
+                                            <td className="px-4 py-3">{row.value}</td>
+                                            <td className="px-4 py-3 text-right">
+                                                <span className="text-white font-bold bg-blue-600/20 px-2 py-1 rounded text-xs border border-blue-500/30">
+                                                    {row.twod}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {loading && <tr><td colSpan="4" className="text-center py-4">Loading...</td></tr>}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             );
         };
 
-        // --- View: 3D Calculator (The Logic you provided) ---
-        const CalView = () => {
-            const years = [2022, 2023, 2024, 2025];
-            const [selectedNum, setSelectedNum] = useState(null);
-            const mockData = {"2024": ["123", "456", "789", "012", "345", "678"], "2025": ["123", "920", "", "", "", ""]};
+        // --- 3D CALENDAR PAGE (Logic from cal3d.html) ---
+        const ThreeDPage = () => {
+            const [year, setYear] = useState(2025);
+            const gridData = useMemo(() => generate3DGrid(year), [year]);
 
             return (
-                <div className="h-full flex flex-col">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="font-bold uppercase text-xs tracking-tighter text-blue-500">3D Historical Analysis</h3>
-                        {selectedNum && <div className="bg-blue-600 px-3 py-1 rounded text-xs font-bold animate-pulse">Selected: {selectedNum}</div>}
+                <div className="pb-24 pt-4 px-4 space-y-4">
+                    {/* Header Controls */}
+                    <div className="flex justify-between items-center mb-2">
+                        <h2 className="text-2xl font-bold">3D Calendar</h2>
+                        <div className="flex bg-slate-800 rounded-lg p-1 gap-1">
+                            {[2023, 2024, 2025].map(y => (
+                                <button 
+                                    key={y} onClick={() => setYear(y)}
+                                    className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${year === y ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                                >
+                                    {y}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                    <div className="overflow-auto flex-1 no-scrollbar glass rounded-2xl">
-                        <table className="w-full border-collapse">
-                            <thead>
-                                <tr className="sticky top-0 bg-slate-900">
-                                    <th className="p-2 border border-white/5 text-[10px]">Round</th>
-                                    {years.map(y => <th key={y} className="p-2 border border-white/5 text-[10px]">{y}</th>)}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {[...Array(12)].map((_, r) => (
-                                    <tr key={r}>
-                                        <td className="p-2 border border-white/5 text-center text-[10px] bg-white/5">{r+1}</td>
-                                        {years.map(y => {
-                                            const val = mockData[y]?.[r] || "";
-                                            const isMatch = selectedNum && val === selectedNum;
-                                            return (
-                                                <td key={y} className="p-1 border border-white/5" onClick={() => setSelectedNum(val)}>
-                                                    <div className={`cell-box ${isMatch ? 'bg-blue-600 text-white' : 'bg-slate-800'}`}>
-                                                        {val}
-                                                    </div>
-                                                </td>
-                                            );
-                                        })}
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+
+                    {/* Grid View (Mobile optimized version of the Excel file) */}
+                    <div className="grid grid-cols-1 gap-3">
+                        {gridData.map((monthData, idx) => (
+                            <div key={idx} className="glass-panel p-4 rounded-xl flex items-center justify-between border-l-4 border-blue-500 hover:translate-x-1 transition-transform">
+                                <div className="flex flex-col items-center justify-center w-12 bg-slate-800 rounded-lg py-2">
+                                    <span className="text-xs text-slate-500 font-bold uppercase">{monthData.month}</span>
+                                    <span className="text-lg font-bold text-white">{idx + 1}</span>
+                                </div>
+                                
+                                <div className="flex-1 flex justify-around items-center pl-4">
+                                    {monthData.dates.map((d, i) => (
+                                        <div key={i} className="text-center">
+                                            <p className="text-[10px] text-slate-400 mb-1">{d.day} ရက်</p>
+                                            <div className={`text-xl font-bold tracking-widest ${d.isWin ? 'text-green-400' : 'text-white'}`}>
+                                                {d.val}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
             );
         };
 
-        // --- View: Rank ---
-        const RankView = () => (
-            <div className="space-y-4">
-                <h3 className="font-bold text-center mb-6">ထိပ်တန်း ကစားသမား (၁၀) ဦး</h3>
-                {[...Array(10)].map((_, i) => (
-                    <div key={i} className="glass p-4 rounded-2xl flex justify-between items-center">
-                        <div className="flex items-center gap-4">
-                            <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${i < 3 ? 'bg-yellow-500 text-slate-900' : 'bg-slate-800'}`}>{i + 1}</span>
-                            <span className="font-bold">Player {i + 102}</span>
-                        </div>
-                        <span className="text-yellow-500 font-bold">{(10 - i) * 1500} C</span>
-                    </div>
-                ))}
-            </div>
-        );
+        // --- HOME / WALLET PAGE ---
+        const HomePage = ({ user, setUser }) => {
+            const [amount, setAmount] = useState("");
+            const [num, setNum] = useState("");
 
-        // --- View: Profile ---
-        const ProfileView = ({ user }) => (
-            <div className="text-center py-10">
-                <div className="w-24 h-24 bg-slate-700 rounded-full mx-auto mb-4 border-4 border-blue-600 flex items-center justify-center">
-                    <Icon name="user" size={40} />
+            const handleBet = () => {
+                if(!amount || !num) return;
+                if(parseInt(amount) > user.coins) return alert("လက်ကျန်ငွေမလုံလောက်ပါ");
+                
+                // Deduct coins and update logic
+                const newCoins = user.coins - parseInt(amount);
+                setUser({...user, coins: newCoins});
+                setAmount("");
+                setNum("");
+                alert(`နံပါတ် ${num} ကို ${amount} ကျပ်ဖိုး ထိုးပြီးပါပြီ။`);
+            };
+
+            return (
+                <div className="pb-24 pt-4 px-4 space-y-6">
+                    {/* Wallet Card */}
+                    <div className="w-full bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl p-6 text-white shadow-xl shadow-blue-900/40 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-4 opacity-10">
+                            <Icon name="wallet" size={120} />
+                        </div>
+                        <div className="relative z-10">
+                            <p className="text-blue-200 text-sm font-medium mb-1">လက်ကျန်ငွေ (Balance)</p>
+                            <h2 className="text-4xl font-bold tracking-tight mb-6">
+                                {user.coins.toLocaleString()} <span className="text-lg font-normal opacity-70">Ks</span>
+                            </h2>
+                            <div className="flex gap-3">
+                                <button className="bg-white/20 hover:bg-white/30 backdrop-blur-md px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all">
+                                    <Icon name="plus-circle" size={16} /> ငွေဖြည့်မည်
+                                </button>
+                                <button className="bg-white/20 hover:bg-white/30 backdrop-blur-md px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all">
+                                    <Icon name="history" size={16} /> မှတ်တမ်း
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Quick Betting Panel */}
+                    <div className="glass-panel p-5 rounded-2xl">
+                        <div className="flex items-center gap-2 mb-4 border-b border-white/10 pb-3">
+                            <Icon name="zap" size={20} className="text-yellow-400" />
+                            <h3 className="font-bold text-lg">အမြန်ထိုးရန်</h3>
+                        </div>
+                        
+                        <div className="flex gap-3 mb-4">
+                            <div className="flex-1">
+                                <label className="text-xs text-slate-400 mb-1 block">နံပါတ်</label>
+                                <input 
+                                    type="text" maxLength="3" placeholder="99" 
+                                    value={num} onChange={e => setNum(e.target.value)}
+                                    className="w-full bg-slate-900/50 border border-slate-700 text-center text-2xl font-bold p-3 rounded-xl focus:border-blue-500 focus:outline-none text-white tracking-widest"
+                                />
+                            </div>
+                            <div className="flex-1">
+                                <label className="text-xs text-slate-400 mb-1 block">ပမာဏ</label>
+                                <input 
+                                    type="number" placeholder="1000" 
+                                    value={amount} onChange={e => setAmount(e.target.value)}
+                                    className="w-full bg-slate-900/50 border border-slate-700 text-center text-xl font-bold p-3 rounded-xl focus:border-blue-500 focus:outline-none text-white"
+                                />
+                            </div>
+                        </div>
+                        
+                        <Button onClick={handleBet} className="w-full py-4 text-lg animate-pulse-glow">
+                            ထိုးမည်
+                        </Button>
+                    </div>
+
+                    {/* Services Grid */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="glass-panel p-4 rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-slate-800/50 transition-colors cursor-pointer">
+                            <div className="bg-green-500/20 p-3 rounded-full text-green-400">
+                                <Icon name="phone" size={24} />
+                            </div>
+                            <span className="text-sm font-bold">Viber</span>
+                        </div>
+                        <div className="glass-panel p-4 rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-slate-800/50 transition-colors cursor-pointer">
+                            <div className="bg-blue-500/20 p-3 rounded-full text-blue-400">
+                                <Icon name="facebook" size={24} />
+                            </div>
+                            <span className="text-sm font-bold">Facebook</span>
+                        </div>
+                    </div>
                 </div>
-                <h2 className="text-2xl font-bold">{user?.name}</h2>
-                <p className="text-slate-500 text-sm mb-8">ID: 4859202</p>
-                <div className="grid grid-cols-2 gap-4 px-4">
-                    <button className="glass p-4 rounded-2xl flex flex-col items-center gap-2">
-                        <Icon name="settings" /> <span>Settings</span>
-                    </button>
-                    <button className="glass p-4 rounded-2xl flex flex-col items-center gap-2 text-red-500">
-                        <Icon name="log-out" /> <span>Logout</span>
-                    </button>
+            );
+        };
+
+        // ==========================================
+        // APP ORCHESTRATOR
+        // ==========================================
+        const App = () => {
+            const [user, setUser] = useState(null);
+            const [activeTab, setActiveTab] = useState("home");
+            const [loading, setLoading] = useState(true);
+
+            // Simulate Splash Screen
+            useEffect(() => {
+                setTimeout(() => setLoading(false), 2000);
+            }, []);
+
+            if (loading) return (
+                <div className="h-screen w-full flex flex-col items-center justify-center bg-slate-950 text-white">
+                    <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mb-4"></div>
+                    <h1 className="text-2xl font-bold tracking-widest">ARKARSOE SYS</h1>
+                    <p className="text-xs text-slate-500 mt-2">v2.2.0 Pro Edition</p>
                 </div>
-            </div>
-        );
+            );
+
+            if (!user) return <AuthPage onLogin={setUser} />;
+
+            const renderPage = () => {
+                switch(activeTab) {
+                    case "home": return <HomePage user={user} setUser={setUser} />;
+                    case "live": return <LivePage />;
+                    case "3d": return <ThreeDPage />;
+                    case "profile": return (
+                        <div className="h-full flex items-center justify-center text-slate-500">
+                            Coming Soon...
+                        </div>
+                    );
+                    default: return <HomePage />;
+                }
+            };
+
+            const NavItem = ({ id, icon, label }) => (
+                <button 
+                    onClick={() => setActiveTab(id)}
+                    className={`flex flex-col items-center justify-center w-full py-2 transition-all duration-300 ${activeTab === id ? 'tab-active' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                    <Icon name={icon} size={24} className={activeTab === id ? "fill-blue-500/20" : ""} />
+                    <span className="text-[10px] font-bold mt-1">{label}</span>
+                </button>
+            );
+
+            return (
+                <div className="bg-slate-900 min-h-screen max-w-md mx-auto relative shadow-2xl">
+                    {/* Top Bar */}
+                    <div className="sticky top-0 z-50 glass-panel border-b border-white/5 px-4 py-3 flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white text-xs">AS</div>
+                            <span className="font-bold text-lg">2D3D Pro</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                             <div className="px-3 py-1 bg-slate-800 rounded-full text-xs font-bold text-yellow-400 border border-yellow-500/20">
+                                {user.coins.toLocaleString()} Ks
+                             </div>
+                             <Icon name="bell" size={20} className="text-slate-400" />
+                        </div>
+                    </div>
+
+                    {/* Content */}
+                    <main className="min-h-screen">
+                        {renderPage()}
+                    </main>
+
+                    {/* Bottom Navigation */}
+                    <div className="fixed bottom-0 max-w-md w-full glass-panel border-t border-white/5 pb-safe z-50">
+                        <div className="flex justify-around items-center h-16 px-2">
+                            <NavItem id="home" icon="home" label="ပင်မ" />
+                            <NavItem id="live" icon="radio" label="Live 2D" />
+                            <div className="relative -top-5">
+                                <button 
+                                    onClick={() => setActiveTab("home")}
+                                    className="w-14 h-14 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-blue-500/50 border-4 border-slate-900"
+                                >
+                                    <Icon name="plus" size={28} />
+                                </button>
+                            </div>
+                            <NavItem id="3d" icon="calendar" label="3D Cal" />
+                            <NavItem id="profile" icon="user" label="အကောင့်" />
+                        </div>
+                    </div>
+                </div>
+            );
+        };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
